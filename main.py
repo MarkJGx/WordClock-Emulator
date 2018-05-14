@@ -16,9 +16,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('spreadsheet_id', type=str)
 parser.add_argument('range_name', type=str)
 
-
 args = parser.parse_args()
-
 
 
 class LED:
@@ -26,10 +24,14 @@ class LED:
         self.on = on
         self.color = color
         self.letter = letter
+
+
 matrix_rows = 12
 matrix_columns = 12
 
 led_index = dict()
+
+
 def load_leds():
     SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly'
     store = file.Storage('credentials.json')
@@ -47,16 +49,13 @@ def load_leds():
             letter = ""
             try:
                 letter = values[column][row]
-                #print("{}, {}: value {}".format(row, column, values[row][column]))
+                # print("{}, {}: value {}".format(row, column, values[row][column]))
             except IndexError:
                 pass
-            led_index[row + matrix_columns * column] = LED(on=True, letter=letter, color=(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)))
-load_leds()
+            led_index[row + matrix_columns * column] = LED(on=True, letter=letter, color=(255, 0, 0))
 
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GREEN = (0, 255, 0)
-RED = (255, 0, 0)
+
+load_leds()
 
 pygame.init()
 clock = pygame.time.Clock()
@@ -64,17 +63,24 @@ clock = pygame.time.Clock()
 # Set the width and height of the screen [width, height]
 
 INITIAL_WIDTH, INITIAL_HEIGHT = 640, 480
-scale_x, scale_y = 1, 1
+scale_x, scale_y, scale_mul = 1, 1, 1
 width, height = INITIAL_WIDTH, INITIAL_HEIGHT
+
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
 
 screen = pygame.display.set_mode((INITIAL_WIDTH, INITIAL_HEIGHT), HWSURFACE | DOUBLEBUF | RESIZABLE)
 pygame.display.set_caption("Tikko Word Clock Emulator")
 
 title_font = pygame.font.SysFont('Arial', 42)
-letter_font = pygame.font.SysFont('Arial', 32)
+
+INITAL_LETTER_FONT_SIZE = 32
+
+letter_font = pygame.font.SysFont('Arial', INITAL_LETTER_FONT_SIZE)
 
 done = False
-
 
 while not done:
     for event in pygame.event.get():
@@ -85,21 +91,22 @@ while not done:
             height = event.dict['size'][1]
             scale_x = abs(width / INITIAL_WIDTH)
             scale_y = abs(height / INITIAL_HEIGHT)
+            scale_mul = (scale_x + scale_y) / 2
             screen = pygame.display.set_mode(event.dict['size'], HWSURFACE | DOUBLEBUF | RESIZABLE)
+
+            letter_font = pygame.font.SysFont('Arial', int(round(INITAL_LETTER_FONT_SIZE * scale_mul)))
+
             pygame.display.flip()
         keys = pygame.key.get_pressed()
         if keys[K_r]:
             print("reload leds")
             load_leds()
     # render begin
-    screen.fill(WHITE)
+    screen.fill(BLACK)
 
     # draw text
     # title_text = title_font.render("Tikko Word Clock", True, (0, 0, 0))
     # screen.blit(title_text, (width / 2 - title_text.get_rect().width / 2, 2))
-
-    scale_mul = (scale_x + scale_y) / 2
-
     spacing = 6;
     square_size = 20 * scale_mul
     matrix_width = ((spacing * (matrix_rows - 1)) * scale_mul) * spacing + square_size
@@ -113,11 +120,12 @@ while not done:
             x, y = (spacing * spacing * row) * scale_mul + offset_x, (spacing * spacing * column) * scale_mul + offset_y
             if led.on:
                 pygame.draw.rect(screen, led.color, (x, y, square_size, square_size))
-            letter_text = letter_font.render(led.letter, True, (0, 0, 0))
-            screen.blit(letter_text, (x + square_size/2 - letter_text.get_rect().width / 2, y + square_size/2 - letter_text.get_rect().height / 2))
+                letter_text = letter_font.render(led.letter, True, (0, 0, 0))
+                screen.blit(letter_text, (x + square_size / 2 - letter_text.get_rect().width / 2,
+                                          y + square_size / 2 - letter_text.get_rect().height / 2 + 3))
 
     # pygame.draw.rect(screen, (0, 255, 1), (0, 0, square_size, matrix_height))
-    print("scale x: {}, scale y: {}, scale mul: {}".format(scale_x, scale_y, scale_mul))
+    # print("scale x: {}, scale y: {}, scale mul: {}".format(scale_x, scale_y, scale_mul))
 
     pygame.display.flip()
     # render end
