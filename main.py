@@ -123,9 +123,9 @@ while not done:
         if keys[K_r]:
             load_leds()
 
-   # bit = (short) 0 | 0x800
-    for bit_index in range(1, 17):
-        log.info("{}, value: {}, range: {}".format(bit, bit&bit_index != 0, bit_index))
+     # bit = (short) 0 | 0x800
+     # for bit_index in range(1, 17):
+     # log.info("{}, value: {}, range: {}".format(bit, bit&bit_index != 0, bit_index))
 
     # logic end
 
