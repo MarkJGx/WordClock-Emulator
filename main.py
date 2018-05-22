@@ -1,7 +1,8 @@
-# TODO QoL - add proper debugging
-# TODO QoL -cleanup code
-# TODO QoL - move rendering and logic to their own classes
-# TODO performance - multi thread google sheets
+# TODO QoL  - add proper debugging
+# TODO QoL  - cleanup code
+# TODO QoL  - move rendering and logic to their own classes
+# TODO perf -  add threaded asyincio
+# TODO code - replace led_indicies with list
 import pygame
 import random
 import logging
@@ -81,6 +82,7 @@ clock = pygame.time.Clock()
 
 # Set the width and height of the screen [width, height]
 
+TICK_RATE = 60
 INITIAL_WIDTH, INITIAL_HEIGHT = 640, 480
 scale_x, scale_y, scale_mul = 1, 1, 1
 width, height = INITIAL_WIDTH, INITIAL_HEIGHT
@@ -102,6 +104,7 @@ letter_font = pygame.font.SysFont('Arial', INITAL_LETTER_FONT_SIZE)
 done = False
 
 while not done:
+    # logic begin
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             done = True
@@ -119,6 +122,13 @@ while not done:
         keys = pygame.key.get_pressed()
         if keys[K_r]:
             load_leds()
+
+   # bit = (short) 0 | 0x800
+    for bit_index in range(1, 17):
+        log.info("{}, value: {}, range: {}".format(bit, bit&bit_index != 0, bit_index))
+
+    # logic end
+
     # render begin
     screen.fill(BLACK)
 
@@ -147,7 +157,7 @@ while not done:
 
     pygame.display.flip()
     # render end
-    clock.tick(144)
+    clock.tick(TICK_RATE)
 
 # Close the window and quit.
 pygame.quit()
