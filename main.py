@@ -4,21 +4,35 @@
 # TODO performance - multi thread google sheets
 import pygame
 import random
-from pygame.locals import *
-
+import logging
+import sys
 import argparse
+import asyncio
+import time
+from concurrent.futures import ProcessPoolExecutor
+from pygame.locals import *
 from apiclient.discovery import build
 from httplib2 import Http
 from oauth2client import file, client, tools
+
+log = logging.getLogger('WordClock')
+formatter = logging.Formatter('%(threadName)s:[%(levelname)s] %(message)s')
+
+handler = logging.StreamHandler(stream=sys.stdout)
+handler.setFormatter(formatter)
+
+log.addHandler(handler)
+log.setLevel(logging.DEBUG)
+
+log.info('Running.')
 
 # usage ./generate_layout.py "sheet_id" "range_name"
 parser = argparse.ArgumentParser()
 parser.add_argument('spreadsheet_id', type=str)
 parser.add_argument('range_name', type=str)
 
+
 args = parser.parse_args()
-
-
 class LED:
     def __init__(self, on=False, color=(0, 0, 0), letter=""):
         self.on = on
@@ -29,15 +43,17 @@ class LED:
 matrix_rows = 12
 matrix_columns = 12
 
-led_index = dict()
+led_indicies = dict()
+
+OFF_COLOR = (50, 50, 50)
 
 
 def load_leds():
-    SCOPES = 'https://www.googleapis.com/auth/spreadsheets.readonly'
+    scopes = 'https://www.googleapis.com/auth/spreadsheets.readonly'
     store = file.Storage('credentials.json')
     creds = store.get()
     if not creds or creds.invalid:
-        flow = client.flow_from_clientsecrets('client_secret.json', SCOPES)
+        flow = client.flow_from_clientsecrets('client_secret.json', scopes)
         creds = tools.run_flow(flow, store)
     service = build('sheets', 'v4', http=creds.authorize(Http()))
     result = service.spreadsheets().values().get(spreadsheetId=args.spreadsheet_id,
@@ -52,9 +68,12 @@ def load_leds():
                 # print("{}, {}: value {}".format(row, column, values[row][column]))
             except IndexError:
                 pass
-            led_index[row + matrix_columns * column] = LED(on=True, letter=letter, color=(255, 0, 0))
+            led_indicies[row + matrix_columns * column] = LED(on=random.randint(0, 1) == 0, letter=letter,
+                                                              color=(255, 125, 125))
+    log.info("Loaded LED(s) from spreadsheet.")
 
 
+# https://stackoverflow.com/questions/28492103/how-to-combine-python-asyncio-with-threads?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
 load_leds()
 
 pygame.init()
@@ -99,7 +118,6 @@ while not done:
             pygame.display.flip()
         keys = pygame.key.get_pressed()
         if keys[K_r]:
-            print("reload leds")
             load_leds()
     # render begin
     screen.fill(BLACK)
@@ -116,10 +134,10 @@ while not done:
     offset_x = width / 2 - matrix_width / 2
     for row in range(matrix_rows):
         for column in range(matrix_columns):
-            led = led_index[row + matrix_columns * column]
+            led = led_indicies[row + matrix_columns * column]
             x, y = (spacing * spacing * row) * scale_mul + offset_x, (spacing * spacing * column) * scale_mul + offset_y
+            pygame.draw.rect(screen, led.on and led.color or OFF_COLOR, (x, y, square_size, square_size))
             if led.on:
-                pygame.draw.rect(screen, led.color, (x, y, square_size, square_size))
                 letter_text = letter_font.render(led.letter, True, (0, 0, 0))
                 screen.blit(letter_text, (x + square_size / 2 - letter_text.get_rect().width / 2,
                                           y + square_size / 2 - letter_text.get_rect().height / 2 + 3))
