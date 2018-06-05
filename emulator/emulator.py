@@ -18,7 +18,9 @@ from oauth2client import file, client, tools
 
 
 class WordState:
-    def __init__(self, min, max):
+    def __init__(self, word, row, min, max):
+        self.word = word
+        self.row = row
         self.min = min
         self.max = max
 
@@ -31,7 +33,7 @@ class LED:
 
 
 class Emulator:
-    __slots__ = ('args', 'log', 'led_indices', 'render', 'matrix_loader')
+    __slots__ = ('args', 'log', 'led_indices', 'render', 'matrix_loader', 'words')
 
     def __init__(self, args, log):
         self.args = args
@@ -40,10 +42,20 @@ class Emulator:
         self.render = Render()
         self.matrix_loader = GSheetLoader()
 
+    IR = WordState("IR", 0, 0, 2)
+    PIECI = WordState("PIECI", 1, 0, 5)
+    VIENS = WordState("VIENS", 3, 0, 5)
+
+
     def run(self):
         self.load_leds()
-
+        self.matrix_loader.load_word_states(self)
         while True:
+            active_words = [Emulator.IR, Emulator.PIECI, Emulator.VIENS]
+            for active_word in active_words:
+                start_index = active_word.min + self.matrix_column_count * active_word.row
+                for range_index in range(active_word.min, active_word.max):
+                    self.led_indices[start_index + range_index].on = True
             if self.render.draw(self):
                 break
         self.render.quit()
@@ -51,7 +63,7 @@ class Emulator:
     def load_leds(self):
         letter_indices = self.matrix_loader.load_matrix_values(self)
         for index, letter in letter_indices.items():
-            self.led_indices[index] = LED(on=True, color=(255, 50, 0), letter=letter)
+            self.led_indices[index] = LED(on=False, color=(255, 50, 0), letter=letter)
 
     _off_color = (50, 50, 50)
     _matrix_column_count = 12

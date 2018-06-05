@@ -3,7 +3,10 @@ import logging
 import sys
 import argparse
 
+
 if __name__ == '__main__':
+    gspread
+
     log = logging.getLogger('WordClock')
     formatter = logging.Formatter('%(threadName)s:[%(levelname)s] %(message)s')
 
@@ -18,7 +21,9 @@ if __name__ == '__main__':
     # usage ./generate_layout.py "sheet_id" "range_name"
     parser = argparse.ArgumentParser()
     parser.add_argument('spreadsheet_id', type=str)
-    parser.add_argument('range_name', type=str)
+    parser.add_argument('layout_range', type=str)
+    parser.add_argument('words_range', type=str)
+
     args = parser.parse_args()
     emulator = emulator.Emulator(args, log)
     emulator.run()
