@@ -9,9 +9,10 @@ class Render:
         pygame.init()
         pygame.display.set_caption("Tikko Word Clock Emulator")
         self.width, self.height = self.default_width, self.default_height
-        self.clock = pygame.time.Clock()
         self.screen = pygame.display.set_mode((self.default_width, self.default_height),
                                               HWSURFACE | DOUBLEBUF | RESIZABLE)
+        self.clock = pygame.time.Clock()
+
         self.scale_x, self.scale_y, self.scale_mul = 1, 1, 1
         self.letter_font = pygame.font.SysFont('Arial', int(round(self.default_font_size * self.scale_mul)))
 

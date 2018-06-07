@@ -1,57 +1,66 @@
-from apiclient.discovery import build
-from httplib2 import Http
-from oauth2client import file, client, tools
 from .loader import MatrixLoader
-
+from oauth2client.service_account import ServiceAccountCredentials
+import gspread
+from emulator import WordState, WordRange
 
 class GSheetLoader(MatrixLoader):
 
+
+    def get_sheet(self, emulator):
+        scope = ['https://spreadsheets.google.com/feeds',
+                 'https://www.googleapis.com/auth/drive']
+        credentials = ServiceAccountCredentials.from_json_keyfile_name('secret_service_key.json', scope)
+        gc = gspread.authorize(credentials)
+        sheet = gc.open_by_key(emulator.args.spreadsheet_id)
+        return sheet
+
     def load_matrix_values(self, emulator):
         letter_indices = dict()
-        scopes = 'https://www.googleapis.com/auth/spreadsheets.readonly'
-        store = file.Storage('credentials.json')
-        creds = store.get()
-        if not creds or creds.invalid:
-            flow = client.flow_from_clientsecrets('client_secret.json', scopes)
-            creds = tools.run_flow(flow, store)
-        service = build('sheets', 'v4', http=creds.authorize(Http()))
-        result = service.spreadsheets().values().get(spreadsheetId=emulator.args.spreadsheet_id,
-                                                     range=emulator.args.layout_range).execute()
+        sheet = self.get_sheet(emulator)
+        layout_sheet = sheet.worksheet(emulator.args.layout_sheet)
+        cell_list = layout_sheet.range(emulator.args.layout_range)
 
-        values = result.get('values', [])
+        for cell in cell_list:
+            letter_indices[(cell.col - 1) + emulator.matrix_column_count * (cell.row - 1)] = cell.value
         emulator.log.info("Spreadsheet Layout retrieved.")
-        for row in range(emulator.matrix_row_count):
-            for column in range(emulator.matrix_column_count):
-                letter = ""
-                try:
-                    letter = values[column][row]
-                except IndexError:
-                    pass
-                letter_indices[row + emulator.matrix_column_count * column] = letter
         return letter_indices
 
-
     def load_word_states(self, emulator):
-        words = dict()
-        scopes = 'https://www.googleapis.com/auth/spreadsheets.readonly'
-        store = file.Storage('credentials.json')
-        creds = store.get()
-        if not creds or creds.invalid:
-            flow = client.flow_from_clientsecrets('client_secret.json', scopes)
-            creds = tools.run_flow(flow, store)
-        service = build('sheets', 'v4', http=creds.authorize(Http()))
-        result = service.spreadsheets().values().get(spreadsheetId=emulator.args.spreadsheet_id,
-                                                     range=emulator.args.words_range).execute()
+        sheet = self.get_sheet(emulator)
+        words_sheet = sheet.worksheet(emulator.args.words_sheet)
+        cell_list = words_sheet.range(emulator.args.words_range)
 
-        values = result.get('values', [])
-        if not values:
-            print('No data found.')
-        else:
-            emulator.log.debug('Row, Word, Range:')
-            for row in values:
-                if len(row) >= 3:
-                    emulator.log.debug("{}".format(row))
+        word_states = list()
+        for i in range(0, len(cell_list), 2):
+            word_name = cell_list[i].value
+            word_ranges = self.notation_to_word_ranges(cell_list[i + 1].value, emulator)
+            if word_ranges:
+                word_states.append(WordState(word_name, word_ranges))
 
-                # Print columns A and E, which correspond to indices 0 and 4.
+        emulator.log.debug(word_states)
         emulator.log.info("Spreadsheet Words retrieved.")
+        return word_states
 
+    # tuple: row, min_x, max_y
+
+
+    def notation_to_word_ranges(self, given_notation, emulator) -> tuple:
+        if given_notation:
+            notations = given_notation.split(",")
+            word_ranges = tuple()
+            for notation in notations:
+                if notation is not None:
+                    notation = notation.replace(emulator.args.layout_sheet + '!','')
+                    notation_ranges = notation.split(":")
+                    if len(notation_ranges) == 2:
+                        xy_start = gspread.utils.a1_to_rowcol(notation_ranges[0])
+                        xy_end = gspread.utils.a1_to_rowcol(notation_ranges[1])
+
+                        min_x = xy_start[1]
+                        max_x = xy_end[1]
+                        word_ranges = word_ranges + (WordRange(xy_start[0] - 1, min_x - 1, max_x),)
+                    else:
+                        pass
+            return word_ranges
+        else:
+            return None
