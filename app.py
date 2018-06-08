@@ -22,9 +22,11 @@ if __name__ == '__main__':
     parser.add_argument('spreadsheet_id', type=str)
 
     parser.add_argument('layout_sheet', type=str)
-    parser.add_argument('words_sheet', type=str)
     parser.add_argument('layout_range', type=str)
+    parser.add_argument('words_sheet', type=str)
     parser.add_argument('words_range', type=str)
+    parser.add_argument('timings_sheet', type=str)
+    parser.add_argument('timings_range', type=str)
 
     args = parser.parse_args()
     emulator = emulator.Emulator(args, log)

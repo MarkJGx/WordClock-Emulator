@@ -4,12 +4,14 @@
 from emulator import LED
 from emulator.render import Render
 from emulator.loader.gsheet import GSheetLoader
+import datetime
 import random
+import threading
 import pygame
 import time
 
 class Emulator:
-    __slots__ = ('args', 'log', 'led_indices', 'render', 'matrix_loader', 'words', 'clock')
+    __slots__ = ('args', 'log', 'led_indices', 'render', 'matrix_loader', 'words', 'clock', 'timings', 'word_states')
 
     def __init__(self, args, log):
         self.args = args
@@ -17,43 +19,50 @@ class Emulator:
         self.led_indices = dict()
         self.render = Render()
         self.matrix_loader = GSheetLoader()
+        self.timings = dict()
+        self.word_states = dict()
 
 
 #    IR = WordState("IR", 0, 0, 2)
  #   PIECI = WordState("PIECI", 1, 0, 5)
   #  VIENS = WordState("VIENS", 3, 0, 5)
 
+    def update(self):
+        self.load_leds()
+        self.timings = self.matrix_loader.load_timings(self)
+        self.word_states = self.matrix_loader.load_word_states(self)
+        self.log.debug("Refresh.")
+       # threading.Timer(5.0, self.update).start()
 
     def run(self):
-        self.load_leds()
-        word_states = self.matrix_loader.load_word_states(self)
-        active_words = word_states
-        current_milli_time = lambda: int(round(time.time() * 1000))
-        refresh_time_ms = current_milli_time()
+        active_words = list()
+        color = (random.randint(125, 255), random.randint(125, 255), random.randint(125, 255))
+        self.update()
         while True:
-            time_passed_ms = current_milli_time() - refresh_time_ms
-            # if time_passed_ms >= 2000:
-            #     active_words.clear()
-            #     for amount in range(0, random.randint(0, 5)):
-            #         active_words.append(word_states[random.randrange(len(word_states))])
-            #     refresh_time_ms = current_milli_time()
-            #     self.log.debug("Refreshed words.")
-            # TODO bug BEZ refreshes at ranges 3, 6 instead of PUS
-            if time_passed_ms >= 1000:
-                self.flip_leds()
-                word_states = self.matrix_loader.load_word_states(self)
-                active_words = word_states
-                for active_word in active_words:
-                    for word_range in active_word.word_ranges:
-                        start_index = word_range.min_x + self.matrix_column_count * word_range.row
-                        color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-                        for range_index in range(0, word_range.max_x - word_range.min_x):
+            # TODO fix crashing with timings
+            now = datetime.datetime.now()
 
-                            self.led_indices[start_index + range_index].on = True
-                            self.led_indices[start_index + range_index].color = color
-                refresh_time_ms = current_milli_time()
+            actual_hour = abs(now.hour - 12)
+            self.log.debug("before: {}".format(actual_hour))
+
+            current_hours = self.timings[actual_hour]
+            self.log.debug(actual_hour)
+            active_words.clear()
+            for hour in current_hours:
+                if hour in self.word_states:
+                    active_words.append(self.word_states[hour])
+
+            #self.log.debug("current hour {}".format(current_hours))
+            for active_word in active_words:
+                for word_range in active_word.word_ranges:
+                    start_index = word_range.min_x + self.matrix_column_count * word_range.row
+                    for range_index in range(0, word_range.max_x - word_range.min_x):
+                        self.led_indices[start_index + range_index].on = True
+                        self.led_indices[start_index + range_index].color = color
+
             if self.render.draw(self):
                 break
+            self.flip_leds()
 
         self.render.quit()
 

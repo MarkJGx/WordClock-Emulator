@@ -7,5 +7,5 @@ class MatrixLoader(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def load_word_states(self, emulator):
+    def load_word_states(self, emulator) -> dict:
         pass

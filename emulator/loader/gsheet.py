@@ -1,7 +1,9 @@
 from .loader import MatrixLoader
 from oauth2client.service_account import ServiceAccountCredentials
-import gspread
 from emulator import WordState, WordRange
+from itertools import groupby
+
+import gspread
 
 class GSheetLoader(MatrixLoader):
 
@@ -14,6 +16,22 @@ class GSheetLoader(MatrixLoader):
         sheet = gc.open_by_key(emulator.args.spreadsheet_id)
         return sheet
 
+    def load_timings(self, emulator):
+        sheet = self.get_sheet(emulator)
+        layout_sheet = sheet.worksheet(emulator.args.timings_sheet)
+        cell_list = layout_sheet.range(emulator.args.timings_range)
+
+        hours = dict()
+        for cell in cell_list:
+            if cell.value:
+                if cell.row in hours:
+                    hours[cell.row] = hours[cell.row] + (cell.value,)
+                else:
+                    hours[cell.row] = (cell.value,)
+        emulator.log.debug("Hours {}".format(hours))
+        emulator.log.info("Spreadsheet Timings retrieved. ")
+        return hours
+
     def load_matrix_values(self, emulator):
         letter_indices = dict()
         sheet = self.get_sheet(emulator)
@@ -25,17 +43,17 @@ class GSheetLoader(MatrixLoader):
         emulator.log.info("Spreadsheet Layout retrieved.")
         return letter_indices
 
-    def load_word_states(self, emulator):
+    def load_word_states(self, emulator) -> dict:
         sheet = self.get_sheet(emulator)
         words_sheet = sheet.worksheet(emulator.args.words_sheet)
         cell_list = words_sheet.range(emulator.args.words_range)
 
-        word_states = list()
+        word_states = dict()
         for i in range(0, len(cell_list), 2):
             word_name = cell_list[i].value
             word_ranges = self.notation_to_word_ranges(cell_list[i + 1].value, emulator)
             if word_ranges:
-                word_states.append(WordState(word_name, word_ranges))
+                word_states[word_name] = WordState(word_name, word_ranges)
 
         emulator.log.debug(word_states)
         emulator.log.info("Spreadsheet Words retrieved.")
