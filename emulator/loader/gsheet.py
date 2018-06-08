@@ -55,10 +55,19 @@ class GSheetLoader(MatrixLoader):
                     if len(notation_ranges) == 2:
                         xy_start = gspread.utils.a1_to_rowcol(notation_ranges[0])
                         xy_end = gspread.utils.a1_to_rowcol(notation_ranges[1])
+                        same_row = xy_start[0] == xy_end[0]
+                        if same_row:
+                            min_x = xy_start[1]
+                            max_x = xy_end[1]
+                            word_ranges = word_ranges + (WordRange(xy_start[0] - 1, min_x - 1, max_x),)
+                        else:
+                            start_row, end_row = xy_start[0] - 1, xy_end[0]
+                            diff = abs(end_row - start_row)
+                            for i in range(0, diff):
+                                min_x = xy_start[1]
+                                max_x = xy_end[1]
+                                word_ranges = word_ranges + (WordRange(start_row + i, min_x - 1, max_x),)
 
-                        min_x = xy_start[1]
-                        max_x = xy_end[1]
-                        word_ranges = word_ranges + (WordRange(xy_start[0] - 1, min_x - 1, max_x),)
                     else:
                         pass
             return word_ranges

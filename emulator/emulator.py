@@ -47,7 +47,8 @@ class Emulator:
                     for word_range in active_word.word_ranges:
                         start_index = word_range.min_x + self.matrix_column_count * word_range.row
                         color = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-                        for range_index in range(word_range.min_x, word_range.max_x):
+                        for range_index in range(0, word_range.max_x - word_range.min_x):
+
                             self.led_indices[start_index + range_index].on = True
                             self.led_indices[start_index + range_index].color = color
                 refresh_time_ms = current_milli_time()
